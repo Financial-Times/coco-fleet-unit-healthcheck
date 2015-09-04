@@ -76,13 +76,13 @@ func fleetUnitHealthHandler(fleetAPIClient client.API, checker FleetUnitHealthCh
 			panic(err)
 		}
 		for _, unitState := range unitStates {
-			checks = append(checks, NewFleetUnitHealthCheck(*unitState, checker))
+			checks = append(checks, newFleetUnitHealthCheck(*unitState, checker))
 		}
 		fthealth.HandlerParallel("Coco Fleet Unit Healthcheck", "Checks the health of all fleet units", checks...)(w, r)
 	}
 }
 
-func NewFleetUnitHealthCheck(unitState schema.UnitState, checker FleetUnitHealthChecker) fthealth.Check {
+func newFleetUnitHealthCheck(unitState schema.UnitState, checker FleetUnitHealthChecker) fthealth.Check {
 	return fthealth.Check{
 		Name:             unitState.Name + "_" + unitState.MachineID,
 		Severity:         2,
