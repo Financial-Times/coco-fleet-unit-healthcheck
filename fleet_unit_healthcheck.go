@@ -25,11 +25,11 @@ func main() {
 
 	flag.Parse()
 
-	fleetApiClient, err := NewFleetApiClient(*fleetEndpoint, *socksProxy)
+	fleetAPIClient, err := newFleetAPIClient(*fleetEndpoint, *socksProxy)
 	if err != nil {
 		panic(err)
 	}
-	handler := FleetUnitHealthHandler(fleetApiClient, FleetUnitHealthChecker{})
+	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", handler)
@@ -41,7 +41,7 @@ func main() {
 	}
 }
 
-func NewFleetApiClient(fleetEndpoint string, socksProxy string) (client.API, error) {
+func newFleetAPIClient(fleetEndpoint string, socksProxy string) (client.API, error) {
 	u, err := url.Parse(fleetEndpoint)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func NewFleetApiClient(fleetEndpoint string, socksProxy string) (client.API, err
 		}
 		dialer, err := proxy.SOCKS5("tcp", socksProxy, nil, netDialler)
 		if err != nil {
-			log.Fatal("error with proxy %s: %v\n", socksProxy, err)
+			log.Fatalf("error with proxy %s: %v\n", socksProxy, err)
 		}
 		httpClient.Transport = &http.Transport{
 			Proxy:               http.ProxyFromEnvironment,
@@ -68,21 +68,21 @@ func NewFleetApiClient(fleetEndpoint string, socksProxy string) (client.API, err
 	return client.NewHTTPClient(httpClient, *u)
 }
 
-func FleetUnitHealthHandler(fleetApiClient client.API, checker FleetUnitHealthChecker) func(w http.ResponseWriter, r *http.Request) {
+func fleetUnitHealthHandler(fleetAPIClient client.API, checker fleetUnitHealthChecker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		checks := []fthealth.Check{}
-		unitStates, err := fleetApiClient.UnitStates()
+		unitStates, err := fleetAPIClient.UnitStates()
 		if err != nil {
 			panic(err)
 		}
 		for _, unitState := range unitStates {
-			checks = append(checks, NewFleetUnitHealthCheck(*unitState, checker))
+			checks = append(checks, newFleetUnitHealthCheck(*unitState, checker))
 		}
 		fthealth.HandlerParallel("Coco Fleet Unit Healthcheck", "Checks the health of all fleet units", checks...)(w, r)
 	}
 }
 
-func NewFleetUnitHealthCheck(unitState schema.UnitState, checker FleetUnitHealthChecker) fthealth.Check {
+func newFleetUnitHealthCheck(unitState schema.UnitState, checker fleetUnitHealthChecker) fthealth.Check {
 	return fthealth.Check{
 		Name:             unitState.Name + "_" + unitState.MachineID,
 		Severity:         2,
@@ -93,9 +93,9 @@ func NewFleetUnitHealthCheck(unitState schema.UnitState, checker FleetUnitHealth
 	}
 }
 
-type FleetUnitHealthChecker struct{}
+type fleetUnitHealthChecker struct{}
 
-func (f *FleetUnitHealthChecker) Check(unitState schema.UnitState) error {
+func (f *fleetUnitHealthChecker) Check(unitState schema.UnitState) error {
 	if "failed" == unitState.SystemdActiveState {
 		return errors.New("Unit is in failed state.")
 	}
