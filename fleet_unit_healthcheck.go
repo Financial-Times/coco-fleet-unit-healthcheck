@@ -25,11 +25,11 @@ func main() {
 
 	flag.Parse()
 
-	fleetApiClient, err := NewFleetApiClient(*fleetEndpoint, *socksProxy)
+	fleetAPIClient, err := NewFleetApiClient(*fleetEndpoint, *socksProxy)
 	if err != nil {
 		panic(err)
 	}
-	handler := FleetUnitHealthHandler(fleetApiClient, FleetUnitHealthChecker{})
+	handler := FleetUnitHealthHandler(fleetAPIClient, FleetUnitHealthChecker{})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", handler)
@@ -68,10 +68,10 @@ func NewFleetApiClient(fleetEndpoint string, socksProxy string) (client.API, err
 	return client.NewHTTPClient(httpClient, *u)
 }
 
-func FleetUnitHealthHandler(fleetApiClient client.API, checker FleetUnitHealthChecker) func(w http.ResponseWriter, r *http.Request) {
+func FleetUnitHealthHandler(fleetAPIClient client.API, checker FleetUnitHealthChecker) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		checks := []fthealth.Check{}
-		unitStates, err := fleetApiClient.UnitStates()
+		unitStates, err := fleetAPIClient.UnitStates()
 		if err != nil {
 			panic(err)
 		}
