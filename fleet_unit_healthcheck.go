@@ -25,7 +25,7 @@ func main() {
 
 	flag.Parse()
 
-	fleetAPIClient, err := newFleetApiClient(*fleetEndpoint, *socksProxy)
+	fleetAPIClient, err := newFleetAPIClient(*fleetEndpoint, *socksProxy)
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +41,7 @@ func main() {
 	}
 }
 
-func newFleetApiClient(fleetEndpoint string, socksProxy string) (client.API, error) {
+func newFleetAPIClient(fleetEndpoint string, socksProxy string) (client.API, error) {
 	u, err := url.Parse(fleetEndpoint)
 	if err != nil {
 		return nil, err
