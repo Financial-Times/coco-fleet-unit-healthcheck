@@ -56,7 +56,7 @@ func NewFleetApiClient(fleetEndpoint string, socksProxy string) (client.API, err
 		}
 		dialer, err := proxy.SOCKS5("tcp", socksProxy, nil, netDialler)
 		if err != nil {
-			log.Fatal("error with proxy %s: %v\n", socksProxy, err)
+			log.Fatalf("error with proxy %s: %v\n", socksProxy, err)
 		}
 		httpClient.Transport = &http.Transport{
 			Proxy:               http.ProxyFromEnvironment,
