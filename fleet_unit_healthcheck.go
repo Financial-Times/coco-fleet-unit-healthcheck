@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -21,6 +22,7 @@ func main() {
 	var (
 		socksProxy    = flag.String("socks-proxy", "", "Use specified SOCKS proxy (e.g. localhost:2323)")
 		fleetEndpoint = flag.String("fleetEndpoint", "", "Fleet API http endpoint: `http://host:port`")
+		whitelist     = flag.String("timerBasedServices", "", "List of timer based services separated by a comma: deployer.service,image-cleaner.service,tunnel-register.service")
 	)
 
 	flag.Parse()
@@ -29,7 +31,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{})
+	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{strings.Split(*whitelist, ",")})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", handler)
@@ -87,18 +89,33 @@ func newFleetUnitHealthCheck(unitState schema.UnitState, checker fleetUnitHealth
 		Name:             unitState.Name + "_" + unitState.MachineID,
 		Severity:         2,
 		Checker:          func() error { return checker.Check(unitState) },
-		TechnicalSummary: "This fleet unit is in a failed state.",
+		TechnicalSummary: "This fleet unit is not in active state.",
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		PanicGuide:       "TO-DO",
 	}
 }
 
-type fleetUnitHealthChecker struct{}
+type fleetUnitHealthChecker struct {
+	whitelist []string
+}
 
 func (f *fleetUnitHealthChecker) Check(unitState schema.UnitState) error {
 	if "failed" == unitState.SystemdActiveState {
 		return errors.New("Unit is in failed state.")
 	}
 
+	if "inactive" == unitState.SystemdActiveState && !isServiceWhitelisted(unitState.Name, f.whitelist) {
+		return errors.New("Unit is in inactive state.")
+	}
+
 	return nil
+}
+
+func isServiceWhitelisted(serviceName string, whitelist []string) bool {
+	for _, s := range whitelist {
+		if s == serviceName {
+			return true
+		}
+	}
+	return false
 }
