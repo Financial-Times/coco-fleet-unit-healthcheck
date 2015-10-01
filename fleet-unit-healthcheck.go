@@ -31,7 +31,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{strings.Split(*whitelist, ",")})
+	wl := strings.Split(*whitelist, ",")
+	log.Printf("whitelisted services: %v", wl)
+	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{wl})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", handler)
