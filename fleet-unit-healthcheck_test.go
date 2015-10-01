@@ -66,7 +66,7 @@ func TestIsServiceWhitelisted(t *testing.T) {
 
 	for _, test := range tests {
 		if isServiceWhitelisted(test.serviceName, wl) != test.expected {
-			t.Errorf("Service %s\t Expected: %b\t", test.serviceName, test.expected)
+			t.Errorf("Service %s\t Expected: %t\t", test.serviceName, test.expected)
 		}
 	}
 }
