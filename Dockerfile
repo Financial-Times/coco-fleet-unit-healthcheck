@@ -14,5 +14,5 @@ RUN apk --update add go git\
   && apk del go git \
   && rm -rf $GOPATH /var/cache/apk/*
 
-CMD /coco-fleet-unit-healthcheck -fleetEndpoint=$FLEET_ENDPOINT -socks-proxy=$SOCKS_PROXY
+CMD /coco-fleet-unit-healthcheck -fleetEndpoint=$FLEET_ENDPOINT -socks-proxy=$SOCKS_PROXY -whitelist=deployer.service,image-cleaner.service,tunnel-register.service
 
