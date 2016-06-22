@@ -14,5 +14,5 @@ RUN apk --update add go git gcc linux-headers libc-dev \
   && apk del go git gcc linux-headers libc-dev \
   && rm -rf $GOPATH /var/cache/apk/*
 
-CMD /coco-fleet-unit-healthcheck -fleetEndpoint=$FLEET_ENDPOINT -socks-proxy=$SOCKS_PROXY -timerBasedServices=mongo-backup.service,deployer.service,image-cleaner.service,tunnel-register.service,os-upgrade.service
+CMD /coco-fleet-unit-healthcheck -fleetEndpoint=$FLEET_ENDPOINT -socks-proxy=$SOCKS_PROXY -timerBasedServices=mongo-backup.service,deployer.service,image-cleaner.service,tunnel-register.service,os-upgrade.service,neo4j-backup.service
 
