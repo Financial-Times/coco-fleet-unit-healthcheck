@@ -106,6 +106,10 @@ func (f *fleetUnitHealthChecker) Check(unitState schema.UnitState) error {
 		return errors.New("Unit is in failed state.")
 	}
 
+	if "activating" == unitState.SystemdActiveState {
+		return errors.New("Unit is in activating state.")
+	}
+
 	if "inactive" == unitState.SystemdActiveState && !isServiceWhitelisted(unitState.Name, f.whitelist) {
 		return errors.New("Unit is in inactive state.")
 	}

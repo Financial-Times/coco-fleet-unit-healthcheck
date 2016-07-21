@@ -21,6 +21,10 @@ func TestCheck(t *testing.T) {
 			"Unit is in failed state.",
 		},
 		{
+			schema.UnitState{SystemdActiveState: "activating"},
+			"Unit is in activating state.",
+		},
+		{
 			schema.UnitState{Name: "vulcan.service", SystemdActiveState: "inactive"},
 			"Unit is in inactive state.",
 		},
