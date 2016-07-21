@@ -1,5 +1,7 @@
 # Coco Fleet Unit Healthcheck
 
+[![Circle CI](https://circleci.com/gh/Financial-Times/coco-fleet-unit-healthcheck/tree/master.png?style=shield)](https://circleci.com/gh/Financial-Times/coco-fleet-unit-healthcheck/tree/master)
+
 Uses fleet api to look at all the units running in the cluster which are in a failed state.
 
 ## Building
