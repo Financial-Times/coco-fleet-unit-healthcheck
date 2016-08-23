@@ -35,8 +35,8 @@ func main() {
 	wl := strings.Split(*whitelist, ",")
 	log.Printf("whitelisted services: %v", wl)
 	wlRegexp := make([]*regexp.Regexp, len(wl))
-	for _, s := range wl {
-		wlRegexp = append(wlRegexp, regexp.MustCompile(s))
+	for i, s := range wl {
+		wlRegexp[i] = regexp.MustCompile(s)
 	}
 	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{wlRegexp})
 
