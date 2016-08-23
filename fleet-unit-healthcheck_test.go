@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/coreos/fleet/schema"
+	"regexp"
 	"testing"
 )
 
@@ -66,6 +67,14 @@ func TestIsServiceWhitelisted(t *testing.T) {
 			"vulcan.service",
 			false,
 		},
+		{
+			"mongo-backup.service",
+			false,
+		},
+		{
+			"mongo-backup@1.service",
+			true,
+		},
 	}
 
 	for _, test := range tests {
@@ -75,6 +84,9 @@ func TestIsServiceWhitelisted(t *testing.T) {
 	}
 }
 
-func whitelist() []string {
-	return []string{"deployer.service", "image-cleaner.service"}
+func whitelist() []*regexp.Regexp {
+	return []*regexp.Regexp{
+		regexp.MustCompile(`deployer\.service`),
+		regexp.MustCompile(`image-cleaner\.service`),
+		regexp.MustCompile(`mongo-backup@\d+\.service`)}
 }

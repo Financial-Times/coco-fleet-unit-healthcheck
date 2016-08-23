@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -33,7 +34,11 @@ func main() {
 	}
 	wl := strings.Split(*whitelist, ",")
 	log.Printf("whitelisted services: %v", wl)
-	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{wl})
+	wlRegexp := make([]*regexp.Regexp, len(wl))
+	for _, s := range wl {
+		wlRegexp = append(wlRegexp, regexp.MustCompile(s))
+	}
+	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{wlRegexp})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", handler)
@@ -98,7 +103,7 @@ func newFleetUnitHealthCheck(unitState schema.UnitState, checker fleetUnitHealth
 }
 
 type fleetUnitHealthChecker struct {
-	whitelist []string
+	whitelist []*regexp.Regexp
 }
 
 func (f *fleetUnitHealthChecker) Check(unitState schema.UnitState) error {
@@ -117,9 +122,9 @@ func (f *fleetUnitHealthChecker) Check(unitState schema.UnitState) error {
 	return nil
 }
 
-func isServiceWhitelisted(serviceName string, whitelist []string) bool {
+func isServiceWhitelisted(serviceName string, whitelist []*regexp.Regexp) bool {
 	for _, s := range whitelist {
-		if s == serviceName {
+		if s.MatchString(serviceName) {
 			return true
 		}
 	}

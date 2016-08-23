@@ -25,3 +25,10 @@ Binary
 ssh -D 2323 -N core@$FLEETCTL_TUNNEL
 ./coco-fleet-unit-healthcheck --socks-proxy="localhost:2323" -fleetEndpoint="http://localhost:49153"
 ```
+## Command-line options
+###socks-proxy
+Use specified SOCKS proxy (e.g. localhost:2323).
+###fleetEndpoint
+Fleet API http endpoint: `http://host:port`.
+###timerBasedServices
+Comma-separated list of regular expressions defining services whose running status is not checked.
