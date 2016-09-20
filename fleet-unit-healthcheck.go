@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 )
@@ -23,7 +22,6 @@ func main() {
 	var (
 		socksProxy    = flag.String("socks-proxy", "", "Use specified SOCKS proxy (e.g. localhost:2323)")
 		fleetEndpoint = flag.String("fleetEndpoint", "", "Fleet API http endpoint: `http://host:port`")
-		whitelist     = flag.String("timerBasedServices", "", "List of timer based services separated by a comma: deployer.service,image-cleaner.service,tunnel-register.service")
 	)
 
 	flag.Parse()
@@ -32,13 +30,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	wl := strings.Split(*whitelist, ",")
-	log.Printf("whitelisted services: %v", wl)
-	wlRegexp := make([]*regexp.Regexp, len(wl))
-	for i, s := range wl {
-		wlRegexp[i] = regexp.MustCompile(s)
-	}
-	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{wlRegexp})
+	handler := fleetUnitHealthHandler(fleetAPIClient, fleetUnitHealthChecker{})
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", handler)
@@ -84,18 +76,22 @@ func fleetUnitHealthHandler(fleetAPIClient client.API, checker fleetUnitHealthCh
 		if err != nil {
 			panic(err)
 		}
+		states := make(map[string]*schema.UnitState)
 		for _, unitState := range unitStates {
-			checks = append(checks, newFleetUnitHealthCheck(*unitState, checker))
+			states[unitState.Name] = unitState
+		}
+		for _, unitState := range unitStates {
+			checks = append(checks, newFleetUnitHealthCheck(*unitState, states, checker))
 		}
 		fthealth.HandlerParallel("Coco Fleet Unit Healthcheck", "Checks the health of all fleet units", checks...)(w, r)
 	}
 }
 
-func newFleetUnitHealthCheck(unitState schema.UnitState, checker fleetUnitHealthChecker) fthealth.Check {
+func newFleetUnitHealthCheck(unitState schema.UnitState, states map[string]*schema.UnitState, checker fleetUnitHealthChecker) fthealth.Check {
 	return fthealth.Check{
 		Name:             unitState.Name + "_" + unitState.MachineID,
 		Severity:         2,
-		Checker:          func() error { return checker.Check(unitState) },
+		Checker:          func() error { return checker.Check(unitState, states) },
 		TechnicalSummary: "This fleet unit is not in active state.",
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		PanicGuide:       "TO-DO",
@@ -103,10 +99,9 @@ func newFleetUnitHealthCheck(unitState schema.UnitState, checker fleetUnitHealth
 }
 
 type fleetUnitHealthChecker struct {
-	whitelist []*regexp.Regexp
 }
 
-func (f *fleetUnitHealthChecker) Check(unitState schema.UnitState) error {
+func (f *fleetUnitHealthChecker) Check(unitState schema.UnitState, states map[string]*schema.UnitState) error {
 	if "failed" == unitState.SystemdActiveState {
 		return errors.New("Unit is in failed state.")
 	}
@@ -115,16 +110,20 @@ func (f *fleetUnitHealthChecker) Check(unitState schema.UnitState) error {
 		return errors.New("Unit is in activating state.")
 	}
 
-	if "inactive" == unitState.SystemdActiveState && !isServiceWhitelisted(unitState.Name, f.whitelist) {
-		return errors.New("Unit is in inactive state.")
+	if "inactive" == unitState.SystemdActiveState {
+		if !isServiceWhitelisted(unitState.Name, states) {
+			log.Printf("name %s not whitelisted\n", unitState.Name)
+			return errors.New("Unit is in inactive state.")
+		}
 	}
 
 	return nil
 }
 
-func isServiceWhitelisted(serviceName string, whitelist []*regexp.Regexp) bool {
-	for _, s := range whitelist {
-		if s.MatchString(serviceName) {
+func isServiceWhitelisted(serviceName string, states map[string]*schema.UnitState) bool {
+	if strings.HasSuffix(serviceName, ".service") {
+		timerName := strings.TrimSuffix(serviceName, ".service") + ".timer"
+		if _, ok := states[timerName]; ok {
 			return true
 		}
 	}
