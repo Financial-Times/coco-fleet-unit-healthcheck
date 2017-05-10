@@ -19,6 +19,28 @@ import (
 	"time"
 )
 
+const (
+	genericTecSum = "This app is not healthy, restart required"
+	genericBusImp = "This app is not healthy, restart required"
+	sidekickBisImp = "The associated app may not be receiving/forwarding requests properly"
+	queueTecSum = "This unit is not healthy. Kafka, Zookeeper and the proxy are essential to publishing content to the website"
+	queueBisImp = "Content is not being published; the website will become stale"
+	aggHcTecSum = "Monitors health of services running in the cluster"
+	aggHcBusSum = "Application health is not being monitored if this check return false"
+	varnishTecSum = "Varnish cache not running, restart required"
+	varnishBusSum = "All requests to access content will hit backend and may take longer than desired"
+	vulcanTecSum = "Vulcan routes requests, restart required"
+	vulcanBusSum = "Routing of requests on this machine may be failing"
+	backupTecSum = "Database backup service not running; try restarting"
+	backupBusImp = "Restoration of clusters will be slow without recent backups"
+	loggerBusImp = "Logs from database will be lost"
+	sidekickTecSum = "This sidekick unit is not healthy, restart required"
+	mongoTecSum = "Stores all CAPI v2 content; restart required"
+	mongoBusImp = "Customer requests may take longer than expected or return errors"
+	transformerTecSum = "Stores all CAPI v2 content; restart required"
+	transformerBusImp = "Customer requests may take longer than expected or return errors"
+)
+
 func main() {
 	var (
 		socksProxy    = flag.String("socks-proxy", "", "Use specified SOCKS proxy (e.g. localhost:2323)")
@@ -92,13 +114,59 @@ func fleetUnitHealthHandler(fleetAPIClient client.API, checker fleetUnitHealthCh
 }
 
 func newFleetUnitHealthCheck(unitState schema.UnitState, checker fleetUnitHealthChecker) fthealth.Check {
+	name := unitState.Name
+	var isTrue bool
+	switch isTrue {
+	case strings.Contains(name, "sidekick"):
+		return buildHealthcheck(unitState, checker, 3, sidekickTecSum, sidekickBisImp)
+	case strings.Contains(name, "kafka") || strings.Contains(name, "zookeeper"):
+		return buildHealthcheck(unitState, checker, 1, queueTecSum, queueBisImp)
+	case strings.Contains(name, "varnish"):
+		return buildHealthcheck(unitState, checker, 1, varnishTecSum, varnishBusSum)
+	case strings.Contains(name, "vulcan"):
+		return buildHealthcheck(unitState, checker, 1, vulcanTecSum, vulcanBusSum)
+	case strings.Contains(name, "aggregate-healthcheck"):
+		return buildHealthcheck(unitState, checker, 1, aggHcTecSum, aggHcBusSum)
+	case strings.Contains(name, "timer"):
+		return buildHealthcheck(unitState, checker, 2, genericTecSum, "Database backups will not run if this service is unhealthy")
+	case strings.Contains(name, "backup"):
+		return buildHealthcheck(unitState, checker, 2, backupTecSum, backupBusImp)
+	case strings.Contains(name, "mongodb"):
+		return buildHealthcheck(unitState, checker, 1, mongoTecSum, mongoBusImp)
+	case strings.Contains(name, "transformer"):
+		return buildHealthcheck(unitState, checker, 2, transformerTecSum, transformerBusImp)
+	case strings.Contains(name, "logger"):
+		return buildHealthcheck(unitState, checker, 2, genericTecSum, loggerBusImp)
+	case strings.Contains(name, "burrow"):
+		return buildHealthcheck(unitState, checker, 2, genericTecSum, "Kafka lagcheck service will not report kafka lags")
+	case strings.Contains(name, "elb") || strings.Contains(name, "tunnel-registrator"):
+		return buildHealthcheck(unitState, checker, 2, "Should only alert on cluster creation, try restarting", "Should only alert on cluster creation")
+	case strings.Contains(name, "splunk-forwarder") || strings.Contains(name, "diamond") || strings.Contains(name, "image-cleaner"):
+		return buildHealthcheck(unitState, checker, 2, genericTecSum, "")
+	default:
+		return genericHealthcheck(unitState, checker, "View this services healthcheck, from main cluster health page, for recovery information and panic guide")
+	}
+	return fthealth.Check{}
+}
+
+func buildHealthcheck(unitState schema.UnitState, checker fleetUnitHealthChecker, severity uint8, technicalSummary string, businessImpact string) fthealth.Check {
 	return fthealth.Check{
 		Name:             unitState.Name + "_" + unitState.MachineID,
-		Severity:         2,
+		Severity:         severity,
 		Checker:          func() error { return checker.Check(unitState) },
-		TechnicalSummary: "This fleet unit is not in active state.",
-		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
-		PanicGuide:       "TO-DO",
+		TechnicalSummary: technicalSummary,
+		BusinessImpact:   businessImpact,
+		PanicGuide:       "https://dewey.ft.com/fleet-unit-healthcheck.html",
+	}
+}
+
+func genericHealthcheck(unitState schema.UnitState, checker fleetUnitHealthChecker, message string) fthealth.Check {
+	return fthealth.Check{
+		Name:             unitState.Name + "_" + unitState.MachineID,
+		Checker:          func() error { return checker.Check(unitState) },
+		TechnicalSummary: message,
+		BusinessImpact:   message,
+		PanicGuide:       message,
 	}
 }
 
