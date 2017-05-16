@@ -115,35 +115,35 @@ func fleetUnitHealthHandler(fleetAPIClient client.API, checker fleetUnitHealthCh
 
 func newFleetUnitHealthCheck(unitState schema.UnitState, checker fleetUnitHealthChecker) fthealth.Check {
 	name := unitState.Name
-	var isTrue bool
-	switch isTrue {
-	case strings.Contains(name, "sidekick"):
+	if strings.Contains(name, "sidekick") {
 		return buildHealthcheck(unitState, checker, 3, sidekickTecSum, sidekickBisImp)
-	case strings.Contains(name, "kafka") || strings.Contains(name, "zookeeper"):
+	} else if strings.Contains(name, "sidekick") {
+		return buildHealthcheck(unitState, checker, 3, sidekickTecSum, sidekickBisImp)
+	} else if strings.Contains(name, "kafka") || strings.Contains(name, "zookeeper") {
 		return buildHealthcheck(unitState, checker, 1, queueTecSum, queueBisImp)
-	case strings.Contains(name, "varnish"):
+	} else if strings.Contains(name, "varnish") {
 		return buildHealthcheck(unitState, checker, 1, varnishTecSum, varnishBusSum)
-	case strings.Contains(name, "vulcan"):
+	} else if strings.Contains(name, "vulcan") {
 		return buildHealthcheck(unitState, checker, 1, vulcanTecSum, vulcanBusSum)
-	case strings.Contains(name, "aggregate-healthcheck"):
+	} else if strings.Contains(name, "aggregate-healthcheck") {
 		return buildHealthcheck(unitState, checker, 1, aggHcTecSum, aggHcBusSum)
-	case strings.Contains(name, "timer"):
+	} else if strings.Contains(name, "timer") {
 		return buildHealthcheck(unitState, checker, 2, genericTecSum, "Database backups will not run if this service is unhealthy")
-	case strings.Contains(name, "backup"):
+	} else if strings.Contains(name, "backup") {
 		return buildHealthcheck(unitState, checker, 2, backupTecSum, backupBusImp)
-	case strings.Contains(name, "mongodb"):
+	} else if strings.Contains(name, "mongodb") {
 		return buildHealthcheck(unitState, checker, 1, mongoTecSum, mongoBusImp)
-	case strings.Contains(name, "transformer"):
+	} else if strings.Contains(name, "transformer") {
 		return buildHealthcheck(unitState, checker, 2, transformerTecSum, transformerBusImp)
-	case strings.Contains(name, "logger"):
+	} else if strings.Contains(name, "logger") {
 		return buildHealthcheck(unitState, checker, 2, genericTecSum, loggerBusImp)
-	case strings.Contains(name, "burrow"):
+	} else if strings.Contains(name, "burrow") {
 		return buildHealthcheck(unitState, checker, 2, genericTecSum, "Kafka lagcheck service will not report kafka lags")
-	case strings.Contains(name, "elb") || strings.Contains(name, "tunnel-registrator"):
+	} else if strings.Contains(name, "elb") || strings.Contains(name, "tunnel-registrator") {
 		return buildHealthcheck(unitState, checker, 2, "Should only alert on cluster creation, try restarting", "Should only alert on cluster creation")
-	case strings.Contains(name, "splunk-forwarder") || strings.Contains(name, "diamond") || strings.Contains(name, "image-cleaner"):
+	} else if strings.Contains(name, "splunk-forwarder") || strings.Contains(name, "diamond") || strings.Contains(name, "image-cleaner") {
 		return buildHealthcheck(unitState, checker, 2, genericTecSum, "")
-	default:
+	} else {
 		return genericHealthcheck(unitState, checker, "View this services healthcheck, from main cluster health page, for recovery information and panic guide")
 	}
 	return fthealth.Check{}
