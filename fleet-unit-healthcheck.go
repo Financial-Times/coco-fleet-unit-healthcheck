@@ -169,7 +169,7 @@ func genericHealthcheck(unitState schema.UnitState, checker fleetUnitHealthCheck
 		Checker:          func() error { return checker.Check(unitState) },
 		TechnicalSummary: message,
 		BusinessImpact:   message,
-		PanicGuide:       message,
+		PanicGuide:       "https://dewey.ft.com/fleet-unit-healthcheck.html",
 	}
 }
 
