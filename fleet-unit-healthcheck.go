@@ -3,12 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"github.com/Financial-Times/go-fthealth"
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/schema"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"golang.org/x/net/proxy"
 	"log"
 	"net"
 	"net/http"
@@ -17,28 +11,37 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/Financial-Times/go-fthealth"
+	"github.com/coreos/fleet/client"
+	"github.com/coreos/fleet/schema"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"golang.org/x/net/proxy"
 )
 
 const (
-	genericTecSum = "This app is not healthy, restart required"
-	genericBusImp = "This app is not healthy, restart required"
-	sidekickBisImp = "The associated app may not be receiving/forwarding requests properly"
-	queueTecSum = "This unit is not healthy. Kafka, Zookeeper and the proxy are essential to publishing content to the website"
-	queueBisImp = "Content is not being published; the website will become stale"
-	aggHcTecSum = "Monitors health of services running in the cluster"
-	aggHcBusSum = "Application health is not being monitored if this check return false"
-	varnishTecSum = "Varnish cache not running, restart required"
-	varnishBusSum = "All requests to access content will hit backend and may take longer than desired"
-	vulcanTecSum = "Vulcan routes requests, restart required"
-	vulcanBusSum = "Routing of requests on this machine may be failing"
-	backupTecSum = "Database backup service not running; try restarting"
-	backupBusImp = "Restoration of clusters will be slow without recent backups"
-	loggerBusImp = "Logs from database will be lost"
-	sidekickTecSum = "This sidekick unit is not healthy, restart required"
-	mongoTecSum = "Stores all CAPI v2 content; restart required"
-	mongoBusImp = "Customer requests may take longer than expected or return errors"
+	genericTecSum     = "This app is not healthy, restart required"
+	genericBusImp     = "This app is not healthy, restart required"
+	sidekickTecSum    = "This sidekick unit is not healthy, restart required"
+	sidekickBusImp    = "The associated app may not be receiving/forwarding requests properly"
+	queueTecSum       = "This unit is not healthy. Kafka, Zookeeper and the proxy are essential to publishing content to the website"
+	queueBusImp       = "Content is not being published; the website will become stale"
+	aggHcTecSum       = "Monitors health of services running in the cluster"
+	aggHcBusSum       = "Application health is not being monitored if this check return false"
+	varnishTecSum     = "Varnish cache not running, restart required"
+	varnishBusSum     = "All requests to access content will hit backend and may take longer than desired"
+	vulcanTecSum      = "Vulcan routes requests, restart required"
+	vulcanBusSum      = "Routing of requests on this machine may be failing"
+	backupTecSum      = "Database backup service not running; try restarting"
+	backupBusImp      = "Restoration of clusters will be slow without recent backups"
+	loggerBusImp      = "Logs from database will be lost"
+	mongoTecSum       = "Stores all CAPI v2 content; restart required"
+	mongoBusImp       = "Customer requests may take longer than expected or return errors"
 	transformerTecSum = "Stores all CAPI v2 content; restart required"
 	transformerBusImp = "Customer requests may take longer than expected or return errors"
+	bridgeTecSum      = "Messages cannot pass between publishing and delivery clusters; requires restart."
+	bridgeBusImp      = "Publishing workflow will be affected"
 )
 
 func main() {
@@ -116,11 +119,11 @@ func fleetUnitHealthHandler(fleetAPIClient client.API, checker fleetUnitHealthCh
 func newFleetUnitHealthCheck(unitState schema.UnitState, checker fleetUnitHealthChecker) fthealth.Check {
 	name := unitState.Name
 	if strings.Contains(name, "sidekick") {
-		return buildHealthcheck(unitState, checker, 3, sidekickTecSum, sidekickBisImp)
-	} else if strings.Contains(name, "sidekick") {
-		return buildHealthcheck(unitState, checker, 3, sidekickTecSum, sidekickBisImp)
+		return buildHealthcheck(unitState, checker, 3, sidekickTecSum, sidekickBusImp)
+	} else if strings.Contains(name, "bridge") {
+		return buildHealthcheck(unitState, checker, 3, bridgeTecSum, bridgeBusImp)
 	} else if strings.Contains(name, "kafka") || strings.Contains(name, "zookeeper") {
-		return buildHealthcheck(unitState, checker, 1, queueTecSum, queueBisImp)
+		return buildHealthcheck(unitState, checker, 1, queueTecSum, queueBusImp)
 	} else if strings.Contains(name, "varnish") {
 		return buildHealthcheck(unitState, checker, 1, varnishTecSum, varnishBusSum)
 	} else if strings.Contains(name, "vulcan") {
