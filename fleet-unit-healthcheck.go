@@ -38,8 +38,8 @@ const (
 	loggerBusImp      = "Logs from database will be lost"
 	mongoTecSum       = "Stores all CAPI v2 content; restart required"
 	mongoBusImp       = "Customer requests may take longer than expected or return errors"
-	transformerTecSum = "Stores all CAPI v2 content; restart required"
-	transformerBusImp = "Customer requests may take longer than expected or return errors"
+	transformerTecSum = "Concept updates will not be processed and passed to the writer"
+	transformerBusImp = "Concepts will not be added/updated"
 	bridgeTecSum      = "Messages cannot pass between publishing and delivery clusters; requires restart."
 	bridgeBusImp      = "Publishing workflow will be affected"
 )
