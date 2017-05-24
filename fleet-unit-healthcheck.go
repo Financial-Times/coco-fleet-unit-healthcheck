@@ -3,12 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"github.com/Financial-Times/go-fthealth"
-	"github.com/coreos/fleet/client"
-	"github.com/coreos/fleet/schema"
-	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
-	"golang.org/x/net/proxy"
 	"log"
 	"net"
 	"net/http"
@@ -17,6 +11,37 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/Financial-Times/go-fthealth"
+	"github.com/coreos/fleet/client"
+	"github.com/coreos/fleet/schema"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"golang.org/x/net/proxy"
+)
+
+const (
+	genericTecSum     = "This app is not healthy, restart required"
+	genericBusImp     = "This app is not healthy, restart required"
+	sidekickTecSum    = "This sidekick unit is not healthy, restart required"
+	sidekickBusImp    = "The associated app may not be receiving/forwarding requests properly"
+	queueTecSum       = "This unit is not healthy. Kafka, Zookeeper and the proxy are essential to publishing content to the website"
+	queueBusImp       = "Content is not being published; the website will become stale"
+	aggHcTecSum       = "Monitors health of services running in the cluster"
+	aggHcBusSum       = "Application health is not being monitored if this check return false"
+	varnishTecSum     = "Varnish cache not running, restart required"
+	varnishBusSum     = "All requests to access content will hit backend and may take longer than desired"
+	vulcanTecSum      = "Vulcan routes requests, restart required"
+	vulcanBusSum      = "Routing of requests on this machine may be failing"
+	backupTecSum      = "Database backup service not running; try restarting"
+	backupBusImp      = "Restoration of clusters will be slow without recent backups"
+	loggerBusImp      = "Logs from database will be lost"
+	mongoTecSum       = "Stores all CAPI v2 content; restart required"
+	mongoBusImp       = "Customer requests may take longer than expected or return errors"
+	transformerTecSum = "Concept updates will not be processed and passed to the writer"
+	transformerBusImp = "Concepts will not be added/updated"
+	bridgeTecSum      = "Messages cannot pass between publishing and delivery clusters; requires restart."
+	bridgeBusImp      = "Publishing workflow will be affected"
 )
 
 func main() {
@@ -92,13 +117,59 @@ func fleetUnitHealthHandler(fleetAPIClient client.API, checker fleetUnitHealthCh
 }
 
 func newFleetUnitHealthCheck(unitState schema.UnitState, checker fleetUnitHealthChecker) fthealth.Check {
+	name := unitState.Name
+	if strings.Contains(name, "sidekick") {
+		return buildHealthcheck(unitState, checker, 3, sidekickTecSum, sidekickBusImp)
+	} else if strings.Contains(name, "bridge") {
+		return buildHealthcheck(unitState, checker, 3, bridgeTecSum, bridgeBusImp)
+	} else if strings.Contains(name, "kafka") || strings.Contains(name, "zookeeper") {
+		return buildHealthcheck(unitState, checker, 1, queueTecSum, queueBusImp)
+	} else if strings.Contains(name, "varnish") {
+		return buildHealthcheck(unitState, checker, 1, varnishTecSum, varnishBusSum)
+	} else if strings.Contains(name, "vulcan") {
+		return buildHealthcheck(unitState, checker, 1, vulcanTecSum, vulcanBusSum)
+	} else if strings.Contains(name, "aggregate-healthcheck") {
+		return buildHealthcheck(unitState, checker, 1, aggHcTecSum, aggHcBusSum)
+	} else if strings.Contains(name, "timer") {
+		return buildHealthcheck(unitState, checker, 2, genericTecSum, "Database backups will not run if this service is unhealthy")
+	} else if strings.Contains(name, "backup") {
+		return buildHealthcheck(unitState, checker, 2, backupTecSum, backupBusImp)
+	} else if strings.Contains(name, "mongodb") {
+		return buildHealthcheck(unitState, checker, 1, mongoTecSum, mongoBusImp)
+	} else if strings.Contains(name, "transformer") {
+		return buildHealthcheck(unitState, checker, 2, transformerTecSum, transformerBusImp)
+	} else if strings.Contains(name, "logger") {
+		return buildHealthcheck(unitState, checker, 2, genericTecSum, loggerBusImp)
+	} else if strings.Contains(name, "burrow") {
+		return buildHealthcheck(unitState, checker, 2, genericTecSum, "Kafka lagcheck service will not report kafka lags")
+	} else if strings.Contains(name, "elb") || strings.Contains(name, "tunnel-registrator") {
+		return buildHealthcheck(unitState, checker, 2, "Should only alert on cluster creation, try restarting", "Should only alert on cluster creation")
+	} else if strings.Contains(name, "splunk-forwarder") || strings.Contains(name, "diamond") || strings.Contains(name, "image-cleaner") {
+		return buildHealthcheck(unitState, checker, 2, genericTecSum, "")
+	} else {
+		return genericHealthcheck(unitState, checker, "View this services healthcheck, from main cluster health page, for recovery information and panic guide")
+	}
+	return fthealth.Check{}
+}
+
+func buildHealthcheck(unitState schema.UnitState, checker fleetUnitHealthChecker, severity uint8, technicalSummary string, businessImpact string) fthealth.Check {
 	return fthealth.Check{
 		Name:             unitState.Name + "_" + unitState.MachineID,
-		Severity:         2,
+		Severity:         severity,
 		Checker:          func() error { return checker.Check(unitState) },
-		TechnicalSummary: "This fleet unit is not in active state.",
-		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
-		PanicGuide:       "TO-DO",
+		TechnicalSummary: technicalSummary,
+		BusinessImpact:   businessImpact,
+		PanicGuide:       "https://dewey.ft.com/fleet-unit-healthcheck.html",
+	}
+}
+
+func genericHealthcheck(unitState schema.UnitState, checker fleetUnitHealthChecker, message string) fthealth.Check {
+	return fthealth.Check{
+		Name:             unitState.Name + "_" + unitState.MachineID,
+		Checker:          func() error { return checker.Check(unitState) },
+		TechnicalSummary: message,
+		BusinessImpact:   message,
+		PanicGuide:       "https://dewey.ft.com/fleet-unit-healthcheck.html",
 	}
 }
 
