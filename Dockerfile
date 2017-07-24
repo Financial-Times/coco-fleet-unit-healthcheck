@@ -17,4 +17,4 @@ RUN apk --update add go git gcc linux-headers libc-dev \
 CMD exec /coco-fleet-unit-healthcheck \
          -fleetEndpoint=$FLEET_ENDPOINT \
          -socks-proxy=$SOCKS_PROXY \
-         -timerBasedServices='mongo-backup(@\d+)?\.service,deployer\.service,image-cleaner\.service,os-upgrade\.service,neo4j-backup\.service,mongodb-online-backup.service,neo4j-hot-backup@\d+\.service'
+         -timerBasedServices=$TIMER_BASED_SERVICES
